@@ -97,29 +97,47 @@ export function generateQuiz({ apiKey, model, topic, group, count = 5 }) {
   });
 }
 
-const STUDY_SCHEMA = {
+const STR_LIST = { type: "array", items: { type: "string" } };
+
+const LESSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["summary", "keyPoints", "traps", "sources"],
+  required: ["raw", "simple", "analogy", "summary", "keyPoints", "traps", "checks", "sources"],
   properties: {
+    raw: STR_LIST,
+    simple: { type: "string" },
+    analogy: { type: "string" },
     summary: { type: "string" },
-    keyPoints: { type: "array", items: { type: "string" } },
-    traps: { type: "array", items: { type: "string" } },
-    sources: { type: "array", items: { type: "string" } },
+    keyPoints: STR_LIST,
+    traps: STR_LIST,
+    checks: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["q", "a"],
+        properties: { q: { type: "string" }, a: { type: "string" } },
+      },
+    },
+    sources: STR_LIST,
   },
 };
 
-export function generateStudy({ apiKey, model, topic, group }) {
+// Gera uma aula completa no formato Feynman: o app ensina, o estudante lê e confere.
+export function generateLesson({ apiKey, model, topic, group }) {
   return askJSON({
     apiKey,
     model,
-    schema: STUDY_SCHEMA,
+    schema: LESSON_SCHEMA,
     prompt:
-      `Prepare o conteúdo bruto de estudo do tema abaixo para um enfermeiro que vai prestar concurso.\n\n` +
+      `Dê uma aula completa, aplicando você mesmo a técnica Feynman, sobre este tema de edital de concurso para ENFERMEIRO.\n\n` +
       `Disciplina: ${group}\nTema: ${topic}\n\n` +
-      `"summary": texto didático e completo (até ~500 palavras) com conceitos, números, prazos e classificações. ` +
-      `"keyPoints": 6 a 10 pontos que mais caem em prova. "traps": pegadinhas frequentes. ` +
-      `"sources": leis, resoluções, manuais ou diretrizes para aprofundar.`,
+      `"raw": o conteúdo bruto em 6 a 12 itens objetivos, com conceitos, classificações, números, prazos, exceções e a norma de origem (é o que a banca cobra). ` +
+      `"simple": explicação do tema em linguagem simples, como se ensinasse a um leigo (1 a 2 parágrafos). ` +
+      `"analogy": uma analogia do cotidiano que ajude a lembrar. ` +
+      `"summary": o tema resumido em 3 frases. ` +
+      `"keyPoints": 4 a 8 pontos que mais caem em prova. "traps": 2 a 5 pegadinhas e confusões frequentes (as lacunas mais comuns). ` +
+      `"checks": 2 a 4 perguntas curtas de checagem com a resposta. "sources": leis, resoluções, manuais ou diretrizes oficiais para conferir.`,
   });
 }
 

@@ -1,5 +1,6 @@
 // Regras de negócio puras (sem DOM) — testáveis com `node --test`.
 import { QUESTION_BANK, COACH, DISCURSIVE_TEMPLATES } from "./data.js";
+import { LESSONS } from "./lessons.js";
 
 export const REVIEW_INTERVALS = [1, 7, 30]; // revisão espaçada (dias após concluir)
 
@@ -95,6 +96,26 @@ export function bankQuestionsFor(topic, limit = 5) {
   return scored.slice(0, limit).map((x) => x.q);
 }
 
+// Aula offline mais aderente ao tema (ou null). Tags mais longas pesam mais que tags genéricas.
+export function lessonFor(topic) {
+  const hay = normalize(`${topic.title} ${topic.group}`);
+  const title = normalize(topic.title);
+  let best = null;
+  let bestScore = 0;
+  for (const lesson of LESSONS) {
+    let score = 0;
+    for (const tag of lesson.tags) {
+      if (title.includes(tag)) score += tag.length * 2;
+      else if (hay.includes(tag)) score += tag.length * 0.25;
+    }
+    if (score > bestScore) {
+      best = lesson;
+      bestScore = score;
+    }
+  }
+  return bestScore >= 4 ? best : null;
+}
+
 export function discursiveFor(topic, today) {
   const idx = (daysBetween("2024-01-01", today) + topic.title.length) % DISCURSIVE_TEMPLATES.length;
   return DISCURSIVE_TEMPLATES[idx].replace("{t}", topic.title);
@@ -127,8 +148,8 @@ export function dailyTasks(state, today) {
   const topic = state.topics.find((t) => t.id === topicId);
   if (!topic) return [];
   const tasks = [
-    { id: "read", label: `Ler o conteúdo bruto de "${topic.title}" (1 pomodoro de 25 min)` },
-    { id: "feynman", label: "Aplicar a técnica Feynman: explicar, achar lacunas e simplificar" },
+    { id: "read", label: `Estudar a aula de "${topic.title}": conteúdo bruto e explicação Feynman` },
+    { id: "check", label: "Responder o \"Confira se entendeu\"" },
     { id: "quiz", label: "Resolver as questões de múltipla escolha do tema" },
     { id: "discursive", label: "Responder a questão discursiva do dia" },
   ];

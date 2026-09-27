@@ -2,7 +2,7 @@ import { parseSyllabus } from "./parser.js";
 import { FEYNMAN_STEPS, QUESTION_BANK } from "./data.js";
 import {
   dateKey, ensureDailyTopic, advanceDailyTopic, markDone, registerStudy, currentStreak,
-  progress, reviewsDue, markReviewed, bankQuestionsFor, discursiveFor, coachMessage, dailyTasks,
+  progress, reviewsDue, markReviewed, bankQuestionsFor, discursiveFor, coachMessage, dailyTasks, lessonFor,
 } from "./planner.js";
 import * as ai from "./ai.js";
 import * as notify from "./notify.js";
@@ -71,6 +71,16 @@ function render() {
   const views = { inicio: renderOnboarding, hoje: renderToday, conteudo: renderChecklist, questoes: renderQuiz, config: renderSettings };
   main.innerHTML = (views[view] || renderToday)();
   main.focus({ preventScroll: true });
+  if (view === "hoje") autoPrepareLesson();
+}
+
+// Com IA configurada, prepara sozinho a aula de temas que não estão na biblioteca offline.
+const autoTried = new Set();
+function autoPrepareLesson() {
+  const topic = topicById(state.daily?.topicId);
+  if (!topic || !hasAI() || lessonOf(topic) || busy.lesson || autoTried.has(topic.id)) return;
+  autoTried.add(topic.id);
+  setTimeout(() => actions["ai-lesson"](), 0);
 }
 
 function renderOnboarding() {
@@ -151,36 +161,7 @@ function renderToday() {
     </ul>
   </section>
 
-  <section class="card feynman">
-    <h3>🧠 Técnica Feynman</h3>
-    <details open>
-      <summary>${FEYNMAN_STEPS[0].title}</summary>
-      <p class="hint">${FEYNMAN_STEPS[0].hint}</p>
-      ${note.study ? renderStudy(note.study) : ""}
-      ${hasAI()
-        ? `<button data-action="ai-study" ${busy.study ? "disabled" : ""}>${busy.study ? "Gerando conteúdo…" : note.study ? "Gerar novamente" : "✨ Gerar conteúdo bruto com IA"}</button>`
-        : `<p class="muted">Dica: configure uma chave de IA em <a href="#config">Ajustes</a> para receber um resumo do tema, pontos-chave e pegadinhas.</p>`}
-      <label>Minhas anotações do material<textarea data-note="raw" rows="4" placeholder="Palavras-chave, números, prazos, exceções...">${esc(note.raw)}</textarea></label>
-    </details>
-    <details open>
-      <summary>${FEYNMAN_STEPS[1].title}</summary>
-      <p class="hint">${FEYNMAN_STEPS[1].hint}</p>
-      <textarea data-note="explanation" rows="6" placeholder="Imagine que você está explicando para um paciente...">${esc(note.explanation)}</textarea>
-      ${hasAI() ? `<button data-action="ai-review" ${busy.review ? "disabled" : ""}>${busy.review ? "Avaliando…" : "✨ Avaliar minha explicação"}</button>` : ""}
-      ${note.feedback ? renderFeedback(note.feedback) : ""}
-    </details>
-    <details open>
-      <summary>${FEYNMAN_STEPS[2].title}</summary>
-      <p class="hint">${FEYNMAN_STEPS[2].hint}</p>
-      <textarea data-note="gaps" rows="4" placeholder="Onde travei? O que preciso rever?">${esc(note.gaps)}</textarea>
-    </details>
-    <details open>
-      <summary>${FEYNMAN_STEPS[3].title}</summary>
-      <p class="hint">${FEYNMAN_STEPS[3].hint}</p>
-      <textarea data-note="simple" rows="4" placeholder="Minha explicação em até 3 frases + analogia...">${esc(note.simple)}</textarea>
-    </details>
-    <button class="primary" data-action="save-feynman">Salvar Feynman</button>
-  </section>
+  ${renderLesson(topic, note)}
 
   <section class="card">
     <h3>📝 Questões do tema</h3>
@@ -190,14 +171,82 @@ function renderToday() {
   ${renderReviews(d)}`;
 }
 
-function renderStudy(s) {
-  return `<div class="study">
-    <p>${esc(s.summary).replace(/\n/g, "<br>")}</p>
-    <h4>Pontos que mais caem</h4><ul>${s.keyPoints.map((k) => `<li>${esc(k)}</li>`).join("")}</ul>
-    <h4>Pegadinhas</h4><ul>${s.traps.map((k) => `<li>${esc(k)}</li>`).join("")}</ul>
-    <h4>Para aprofundar</h4><ul>${s.sources.map((k) => `<li>${esc(k)}</li>`).join("")}</ul>
-    <p class="muted small">Conteúdo gerado por IA: confira sempre na legislação/fonte oficial.</p>
-  </div>`;
+const list = (items) => `<ul>${items.map((k) => `<li>${esc(k)}</li>`).join("")}</ul>`;
+
+// Aula do tema: gerada pela IA (se houver) ou da biblioteca offline.
+function lessonOf(topic) {
+  return state.notes[topic.id]?.lesson || lessonFor(topic);
+}
+
+function renderLesson(topic, note) {
+  const lesson = lessonOf(topic);
+  const checked = state.tasks[today()] || {};
+
+  if (!lesson) {
+    if (hasAI()) {
+      return `<section class="card lesson"><h3>🧠 Aula do dia</h3>
+        <p>${busy.lesson ? "⏳ Preparando sua aula sobre este tema…" : "Toque para o app preparar a aula deste tema."}</p>
+        <button class="primary" data-action="ai-lesson" ${busy.lesson ? "disabled" : ""}>${busy.lesson ? "Preparando aula…" : "✨ Preparar aula"}</button>
+      </section>`;
+    }
+    return `<section class="card lesson"><h3>🧠 Aula do dia</h3>
+      <p>A biblioteca offline ainda não tem uma aula pronta para <b>${esc(topic.title)}</b>.</p>
+      <p>Para o app ensinar <b>qualquer</b> tema do seu edital (conteúdo, explicação simples, pegadinhas e perguntas),
+      adicione uma chave de IA em <a href="#config">Ajustes</a>.</p>
+      <p class="muted small">Temas com aula offline: SUS e leis 8.080/8.142, PNAB, Lei 7.498, Código de Ética, Processo de Enfermagem,
+      biossegurança, controle de infecção, segurança do paciente, cirurgia segura, cálculo e administração de medicamentos, diabetes,
+      hipertensão, lesão por pressão, PCR, Glasgow, choque e sepse, imunização, vigilância epidemiológica, pré-natal, saúde da criança,
+      sinais vitais, sondagens, CME, saúde mental e tuberculose.</p>
+      <button data-action="next-topic">Pular para o próximo tema</button>
+    </section>`;
+  }
+
+  const [s1, s2, s3, s4] = FEYNMAN_STEPS;
+  return `<section class="card lesson">
+    <p class="eyebrow">Aula do dia · Técnica Feynman</p>
+    <h3>${esc(lesson.title || topic.title)}</h3>
+
+    <details open><summary>${s1.icon} ${s1.title}</summary><p class="hint">${s1.hint}</p>${list(lesson.raw)}</details>
+
+    <details open><summary>${s2.icon} ${s2.title}</summary><p class="hint">${s2.hint}</p>
+      <p class="simple">${esc(lesson.simple)}</p>
+      <h4>O que mais cai na prova</h4>${list(lesson.keyPoints)}
+    </details>
+
+    <details open><summary>${s3.icon} ${s3.title}</summary><p class="hint">${s3.hint}</p>
+      <div class="traps">${list(lesson.traps)}</div>
+    </details>
+
+    <details open><summary>${s4.icon} ${s4.title}</summary><p class="hint">${s4.hint}</p>
+      <p class="analogy"><b>Analogia:</b> ${esc(lesson.analogy)}</p>
+      <p class="summary"><b>Em 3 frases:</b> ${esc(lesson.summary)}</p>
+    </details>
+
+    <details><summary>📚 Fontes para conferir</summary>${list(lesson.sources)}
+      ${state.notes[topic.id]?.lesson ? `<p class="muted small">Aula gerada por IA: confira sempre na fonte oficial.</p>` : `<p class="muted small">Confira sempre a versão vigente da norma cobrada no seu edital.</p>`}
+    </details>
+
+    <button class="primary" data-action="lesson-read" ${checked.read ? "disabled" : ""}>${checked.read ? "✔ Aula estudada" : "Li e entendi a aula"}</button>
+  </section>
+
+  <section class="card">
+    <h3>✅ Confira se entendeu</h3>
+    <p class="muted small">Tente responder de cabeça e depois toque na pergunta para ver a resposta.</p>
+    ${lesson.checks.map((c) => `<details class="check"><summary>${esc(c.q)}</summary><p>${esc(c.a)}</p></details>`).join("")}
+    <button data-action="checks-done" ${checked.check ? "disabled" : ""}>${checked.check ? "✔ Checagem feita" : "Conferi minhas respostas"}</button>
+  </section>
+
+  <section class="card">
+    <details ${note.explanation ? "open" : ""}><summary>✍️ Quer fixar ainda mais? Explique com suas palavras (opcional)</summary>
+      <p class="hint">Reescrever o tema do seu jeito é a forma mais forte de memorizar.</p>
+      <textarea data-note="explanation" rows="5" placeholder="Explique como se fosse para um paciente...">${esc(note.explanation)}</textarea>
+      <div class="row">
+        <button data-action="save-feynman">Salvar</button>
+        ${hasAI() ? `<button data-action="ai-review" ${busy.review ? "disabled" : ""}>${busy.review ? "Avaliando…" : "✨ Avaliar minha explicação"}</button>` : ""}
+      </div>
+      ${note.feedback ? renderFeedback(note.feedback) : ""}
+    </details>
+  </section>`;
 }
 
 function renderFeedback(f) {
@@ -449,19 +498,27 @@ const actions = {
     render();
   },
   "save-feynman": () => {
-    const note = saveNotesFromDOM(state.daily.topicId);
-    if (note.raw || note.study) setTask("read");
-    if (note.explanation && note.simple) setTask("feynman");
+    saveNotesFromDOM(state.daily.topicId);
     save();
-    toast("Técnica Feynman salva.");
+    toast("Explicação salva.");
+  },
+  "lesson-read": () => {
+    setTask("read");
+    save();
+    toast("Aula estudada! Agora confira se entendeu. 💪");
     render();
   },
-  "ai-study": () => {
+  "checks-done": () => {
+    setTask("check");
+    save();
+    toast("Ótimo! Hora das questões.");
+    render();
+  },
+  "ai-lesson": () => {
     const topic = topicById(state.daily.topicId);
-    saveNotesFromDOM(topic.id);
-    runAI("study", async () => {
-      state.notes[topic.id].study = await ai.generateStudy({ ...aiOpts(), topic: topic.title, group: topic.group });
-      setTask("read");
+    runAI("lesson", async () => {
+      const lesson = await ai.generateLesson({ ...aiOpts(), topic: topic.title, group: topic.group });
+      (state.notes[topic.id] ||= {}).lesson = { ...lesson, title: topic.title };
     });
   },
   "ai-review": () => {
@@ -470,7 +527,6 @@ const actions = {
     if (!note.explanation?.trim()) return toast("Escreva sua explicação primeiro.");
     runAI("review", async () => {
       note.feedback = await ai.reviewExplanation({ ...aiOpts(), topic: topic.title, explanation: note.explanation });
-      if (!note.gaps && note.feedback.gaps.length) note.gaps = note.feedback.gaps.map((g) => "• " + g).join("\n");
     });
   },
   "go-quiz": (el) => {

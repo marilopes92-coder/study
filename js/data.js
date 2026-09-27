@@ -352,23 +352,12 @@ export const COACH = {
   ],
 };
 
+// Técnica Feynman aplicada pelo próprio app a cada aula.
 export const FEYNMAN_STEPS = [
-  {
-    title: "1. Estude o conteúdo bruto",
-    hint: "Leia o tema no seu material (lei, manual do MS, livro). Anote as palavras-chave, números, prazos e exceções — é isso que a banca cobra.",
-  },
-  {
-    title: "2. Explique com suas palavras",
-    hint: "Escreva como se estivesse ensinando a um paciente ou a um estudante do 1º período. Sem copiar, sem jargão desnecessário.",
-  },
-  {
-    title: "3. Identifique as lacunas",
-    hint: "Onde você travou? O que não soube explicar? Volte ao material só nesses pontos e anote o que faltou.",
-  },
-  {
-    title: "4. Simplifique e crie uma analogia",
-    hint: "Reescreva a explicação de forma ainda mais simples e crie uma comparação do dia a dia. Se cabe em 3 frases, você dominou.",
-  },
+  { icon: "📖", title: "1. Conteúdo bruto", hint: "O que a banca cobra: conceitos, números, prazos e exceções." },
+  { icon: "🧠", title: "2. Explicação simples", hint: "O mesmo conteúdo explicado como se fosse para um leigo." },
+  { icon: "🔍", title: "3. Lacunas e pegadinhas", hint: "Onde os candidatos mais erram. Preste atenção aqui." },
+  { icon: "✨", title: "4. Simplificação final", hint: "Uma analogia do dia a dia e o tema resumido em 3 frases." },
 ];
 
 export const DISCURSIVE_TEMPLATES = [

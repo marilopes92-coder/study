@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { parseSyllabus } from "../js/parser.js";
 import {
   ensureDailyTopic, advanceDailyTopic, markDone, currentStreak, progress,
-  reviewsDue, markReviewed, bankQuestionsFor, coachMessage, daysBetween,
+  reviewsDue, markReviewed, bankQuestionsFor, coachMessage, daysBetween, lessonFor,
 } from "../js/planner.js";
+import { LESSONS } from "../js/lessons.js";
 
 const SYLLABUS = `LEGISLAÇÃO DO SUS
 1. Lei nº 8.080/1990; 2. Lei nº 8.142/1990 e controle social.
@@ -79,4 +80,35 @@ test("coach sempre retorna uma mensagem", () => {
 
 test("daysBetween", () => {
   assert.equal(daysBetween("2026-02-28", "2026-03-01"), 1);
+});
+
+test("todas as aulas offline têm o formato Feynman completo", () => {
+  for (const l of LESSONS) {
+    for (const k of ["raw", "keyPoints", "traps", "checks", "sources"]) assert.ok(l[k].length > 0, `${l.id}.${k}`);
+    for (const k of ["title", "simple", "analogy", "summary"]) assert.ok(l[k].trim(), `${l.id}.${k}`);
+    for (const c of l.checks) assert.ok(c.q && c.a, `${l.id} check`);
+  }
+  assert.equal(new Set(LESSONS.map((l) => l.id)).size, LESSONS.length);
+});
+
+test("o app encontra a aula certa para temas típicos de edital", () => {
+  const cases = {
+    "Lei nº 8.080/1990": "lei8080",
+    "Lei 8.142/90 e controle social": "lei8142",
+    "Código de Ética dos Profissionais de Enfermagem": "etica",
+    "Sistematização da Assistência de Enfermagem (SAE)": "processo-enfermagem",
+    "Biossegurança e NR 32": "nr32",
+    "Cálculo e diluição de medicamentos": "calculo",
+    "Lesão por pressão: prevenção e tratamento": "lpp-feridas",
+    "Parada cardiorrespiratória e RCP": "pcr",
+    "Imunização: calendário vacinal e rede de frio": "imunizacao",
+    "Assistência de enfermagem no pré-natal": "prenatal",
+    "Política Nacional de Atenção Básica": "pnab",
+    "Tuberculose": "tuberculose",
+    "Reforma psiquiátrica e RAPS": "saude-mental",
+  };
+  for (const [title, id] of Object.entries(cases)) {
+    assert.equal(lessonFor({ title, group: "CONHECIMENTOS ESPECÍFICOS" })?.id, id, title);
+  }
+  assert.equal(lessonFor({ title: "Hemodiálise e diálise peritoneal", group: "Geral" }), null);
 });

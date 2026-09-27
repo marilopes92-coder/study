@@ -8,18 +8,25 @@ Você cola o conteúdo programático do edital e o app monta a rotina de estudos
 | Recurso | Como funciona |
 |---|---|
 | **Um tema por dia** | O edital é dividido em disciplinas e temas. A cada dia o app traz o próximo tema pendente (dá para trocar ou adiantar). |
-| **Técnica Feynman** | 4 etapas guiadas: 1) estudar o conteúdo bruto, 2) explicar com suas palavras, 3) identificar lacunas, 4) simplificar e criar uma analogia. |
+| **Aula do dia (Feynman)** | O próprio app ensina o tema: 1) conteúdo bruto (o que a banca cobra), 2) explicação simples, 3) lacunas e pegadinhas, 4) analogia e resumo em 3 frases. Depois, perguntas de "Confira se entendeu". Explicar com as próprias palavras é opcional. |
 | **Checklist do edital** | Todos os temas, agrupados por disciplina, com barra de progresso. Marque como feito ao concluir. |
 | **Tarefas diárias** | Leitura (pomodoro), Feynman, questões de múltipla escolha, questão discursiva e revisões espaçadas (1, 7 e 30 dias). |
 | **Questões** | Banco offline com questões no estilo das bancas (SUS, ética, Lei 7.498, processo de enfermagem, NR-32, segurança do paciente, cálculo de medicação, PCR, LPP, imunização, etc.) + discursivas com checklist de autocorreção. |
 | **Lembretes diários** | Notificações no horário escolhido e botão **📅 Adicionar à agenda**, que cria um evento diário com alarme no calendário do celular. |
 | **Coach motivacional** | Mensagens que mudam conforme sua sequência de dias, seu progresso, dias sem estudar e a proximidade da prova. |
 
+### Aulas offline
+
+A biblioteca `js/lessons.js` traz 29 aulas prontas, que funcionam sem internet, sobre os temas mais cobrados: SUS (Leis 8.080 e 8.142, princípios, PNAB),
+Lei 7.498, Código de Ética, Processo de Enfermagem (Res. COFEN 736/2024), NR-32, controle de infecção, segurança do paciente,
+cirurgia segura, cálculo e administração de medicamentos, diabetes, hipertensão, lesão por pressão, PCR, Glasgow, choque e sepse,
+imunização, vigilância epidemiológica, pré-natal, saúde da criança, sinais vitais, sondagens, CME, saúde mental e tuberculose.
+
 ### IA opcional (Claude)
 
 Em **Ajustes**, você pode colar uma chave da API do Claude ([console.anthropic.com](https://console.anthropic.com)). Com ela, o app:
 
-- gera o **conteúdo bruto** do tema (resumo, pontos que mais caem, pegadinhas e fontes);
+- prepara **automaticamente a aula completa** de qualquer tema do edital que não esteja na biblioteca offline;
 - **avalia sua explicação Feynman** (nota, acertos, lacunas e versão simplificada);
 - cria **questões inéditas** de múltipla escolha e discursivas para *qualquer* tema do edital;
 - **corrige sua resposta discursiva** como uma banca.
@@ -54,6 +61,7 @@ styles.css            estilos (modo claro/escuro, mobile first)
 sw.js                 service worker: offline + lembrete em segundo plano
 js/parser.js          transforma o edital em disciplinas/temas
 js/planner.js         tema do dia, sequência, revisões, tarefas, coach
+js/lessons.js         biblioteca de aulas offline no formato Feynman
 js/data.js            banco de questões, frases do coach, etapas Feynman
 js/ai.js              integração opcional com a API do Claude
 js/notify.js          notificações e arquivo .ics
