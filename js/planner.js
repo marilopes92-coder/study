@@ -88,15 +88,24 @@ export function markReviewed(state, topicId, interval) {
 
 export function bankQuestionsFor(topic, limit = 5) {
   const hay = normalize(`${topic.group} ${topic.title}`);
-  const scored = QUESTION_BANK.map((q, i) => ({
-    q: { ...q, id: "bank-" + i },
-    score: q.tags.reduce((n, tag) => n + (hay.includes(tag) ? 1 : 0), 0),
-  })).filter((x) => x.score > 0);
+  const title = normalize(topic.title);
+  const scored = QUESTION_BANK.map((q, i) => {
+    let score = 0;
+    for (const tag of q.tags) {
+      if (title.includes(tag)) score += tag.length * 2 * (/\d/.test(tag) ? 3 : 1);
+      else if (hay.includes(tag)) score += 1;
+    }
+    return { q: { ...q, id: "bank-" + i }, score };
+  }).filter((x) => x.score > 0);
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, limit).map((x) => x.q);
+  // Descarta questões só tangencialmente relacionadas quando há outras bem mais aderentes.
+  const top = scored[0]?.score || 0;
+  return scored.filter((x) => x.score >= top * 0.4).slice(0, limit).map((x) => x.q);
 }
 
 // Aula offline mais aderente ao tema (ou null). Tags mais longas pesam mais que tags genéricas.
+// Aula offline mais aderente ao tema (ou null). Tags mais longas pesam mais que tags genéricas,
+// números de normas (ex.: "14.874") pesam o triplo e é preciso casar algo no próprio título.
 export function lessonFor(topic) {
   const hay = normalize(`${topic.title} ${topic.group}`);
   const title = normalize(topic.title);
@@ -104,11 +113,15 @@ export function lessonFor(topic) {
   let bestScore = 0;
   for (const lesson of LESSONS) {
     let score = 0;
+    let titleHit = false;
     for (const tag of lesson.tags) {
-      if (title.includes(tag)) score += tag.length * 2;
-      else if (hay.includes(tag)) score += tag.length * 0.25;
+      const weight = /\d/.test(tag) ? 3 : 1;
+      if (title.includes(tag)) {
+        score += tag.length * 2 * weight;
+        titleHit = true;
+      } else if (hay.includes(tag)) score += tag.length * 0.25;
     }
-    if (score > bestScore) {
+    if (titleHit && score > bestScore) {
       best = lesson;
       bestScore = score;
     }

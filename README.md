@@ -22,6 +22,11 @@ Lei 7.498, Código de Ética, Processo de Enfermagem (Res. COFEN 736/2024), NR-3
 cirurgia segura, cálculo e administração de medicamentos, diabetes, hipertensão, lesão por pressão, PCR, Glasgow, choque e sepse,
 imunização, vigilância epidemiológica, pré-natal, saúde da criança, sinais vitais, sondagens, CME, saúde mental e tuberculose.
 
+Em `js/lessons-pesquisa.js` há também 13 aulas e 22 questões de **Pesquisa Clínica** (edital INCA Fellow 214: ética em pesquisa,
+fluxo ético-regulatório, tipos de estudos clínicos e TCLE), baseadas na Lei 14.874/2024, Res. CNS 466/2012, ICH E6(R2),
+Declaração da UNESCO (2005), Umscheid et al. (2011) e Verweij et al. (2019). O edital está disponível como **edital pronto**
+na tela inicial e em Ajustes.
+
 ### IA opcional (Claude)
 
 Em **Ajustes**, você pode colar uma chave da API do Claude ([console.anthropic.com](https://console.anthropic.com)). Com ela, o app:
@@ -62,6 +67,7 @@ sw.js                 service worker: offline + lembrete em segundo plano
 js/parser.js          transforma o edital em disciplinas/temas
 js/planner.js         tema do dia, sequência, revisões, tarefas, coach
 js/lessons.js         biblioteca de aulas offline no formato Feynman
+js/lessons-pesquisa.js aulas, questões e edital pronto de Pesquisa Clínica (INCA 214)
 js/data.js            banco de questões, frases do coach, etapas Feynman
 js/ai.js              integração opcional com a API do Claude
 js/notify.js          notificações e arquivo .ics

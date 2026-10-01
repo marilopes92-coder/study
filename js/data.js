@@ -2,6 +2,8 @@
 // `tags` são trechos (sem acento, minúsculos) procurados no título do tema do edital.
 // `answer` é o índice da alternativa correta.
 
+import { PESQUISA_QUESTIONS } from "./lessons-pesquisa.js";
+
 export const QUESTION_BANK = [
   {
     tags: ["8080", "8.080", "sus", "sistema unico", "lei organica"],
@@ -313,6 +315,7 @@ export const QUESTION_BANK = [
     answer: 1,
     explain: "A dTpa é indicada a cada gestação a partir da 20ª semana, para proteção do recém-nascido contra coqueluche. Vacinas de vírus vivo atenuado (tríplice viral, varicela) são contraindicadas na gestação.",
   },
+  ...PESQUISA_QUESTIONS,
 ];
 
 // Frases do coach motivacional, separadas por contexto.

@@ -112,3 +112,47 @@ test("o app encontra a aula certa para temas típicos de edital", () => {
   }
   assert.equal(lessonFor({ title: "Hemodiálise e diálise peritoneal", group: "Geral" }), null);
 });
+
+import { EDITAL_PRESETS, PESQUISA_QUESTIONS } from "../js/lessons-pesquisa.js";
+
+const INCA_PDF = `214 - PESQUISA CLÍNICA EM CÂNCER, COM ÊNFASE NO GERENCIAMENTO E CONDUÇÃO
+DE ENSAIOS CLÍNICOS
+1. Ética em pesquisa; 2. Fluxo ético-regulatório; 3. Tipos de estudos clínicos; 4. Termo de
+Consentimento Livre e Esclarecido.
+REFERÊNCIAS:
+BRASIL. Lei nº 14.874, de 28 de maio de 2024. Dispõe sobre a pesquisa com seres humanos e
+institui o Sistema Nacional de Ética em Pesquisa com Seres Humanos. Diário Oficial da União,
+Brasília, DF, 29 maio 2024.
+BRASIL. Ministério da Saúde. Conselho Nacional de Saúde. Resolução nº 466, de 12 de
+dezembro de 2012.`;
+
+test("edital do INCA colado do PDF: 4 temas, título reunido e referências ignoradas", () => {
+  const topics = parseSyllabus(INCA_PDF);
+  assert.deepEqual(topics.map((t) => t.title), [
+    "Ética em pesquisa", "Fluxo ético-regulatório", "Tipos de estudos clínicos", "Termo de Consentimento Livre e Esclarecido",
+  ]);
+  assert.equal(topics[0].group, "PESQUISA CLÍNICA EM CÂNCER, COM ÊNFASE NO GERENCIAMENTO E CONDUÇÃO DE ENSAIOS CLÍNICOS");
+  const ids = topics.map((t) => lessonFor(t)?.id);
+  assert.deepEqual(ids, ["res466", "cep-conep", "tipos-estudo", "tcle"]);
+});
+
+test("edital pronto INCA 214: cada subtema tem sua própria aula", () => {
+  const topics = parseSyllabus(EDITAL_PRESETS[0].text);
+  assert.equal(topics.length, 13);
+  assert.deepEqual(topics.map((t) => lessonFor(t)?.id), [
+    "etica-historia", "unesco", "res466",
+    "cep-conep", "lei14874", "ich-gcp", "conducao",
+    "tipos-estudo", "fases", "ecr-metodologia", "onco-desenhos",
+    "tcle", "tcle-especiais",
+  ]);
+  for (const t of topics) assert.ok(bankQuestionsFor(t).length > 0, `sem questões: ${t.title}`);
+});
+
+test("questões de pesquisa não misturam o Código de Ética da Enfermagem", () => {
+  for (const title of ["Ética em pesquisa", "Resolução CNS nº 466/2012 — ética em pesquisa com seres humanos"]) {
+    const qs = bankQuestionsFor({ title, group: "ÉTICA EM PESQUISA" });
+    assert.ok(qs.length > 0);
+    assert.ok(qs.every((q) => !q.q.includes("COFEN")), title);
+  }
+  for (const q of PESQUISA_QUESTIONS) assert.ok(q.answer >= 0 && q.answer < q.options.length && q.explain);
+});

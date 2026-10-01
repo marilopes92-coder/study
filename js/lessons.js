@@ -4,6 +4,8 @@
 // `tags` são trechos (minúsculos, sem acento) procurados no título do tema do edital.
 // Conteúdo de apoio: confira sempre a norma vigente cobrada no seu edital.
 
+import { PESQUISA_LESSONS } from "./lessons-pesquisa.js";
+
 export const LESSONS = [
   {
     id: "lei8080",
@@ -182,7 +184,7 @@ export const LESSONS = [
   },
   {
     id: "etica",
-    tags: ["etica", "codigo de etica", "cepe", "564", "deontologia", "bioetica"],
+    tags: ["etica", "codigo de etica", "cepe", "564", "deontologia", "etica profissional"],
     title: "Código de Ética dos Profissionais de Enfermagem (Res. COFEN 564/2017)",
     raw: [
       "Organizado em princípios fundamentais, direitos, deveres, proibições, infrações e penalidades.",
@@ -938,4 +940,5 @@ export const LESSONS = [
     ],
     sources: ["Manual de Recomendações para o Controle da Tuberculose no Brasil (MS — edição vigente)"],
   },
+  ...PESQUISA_LESSONS,
 ];

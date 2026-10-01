@@ -3,6 +3,8 @@
 //  - Linhas em CAIXA ALTA ou terminadas em ":" viram "disciplinas" (grupos).
 //  - Cada linha restante é quebrada em temas por ";" e por numeração "1.", "1.1", "2)".
 //  - Numeração, marcadores e pontuação final são removidos.
+//  - Seções de REFERÊNCIAS/BIBLIOGRAFIA são ignoradas.
+//  - Linhas quebradas no meio de um tema (comum ao copiar de PDF) são reunidas.
 
 const HEADING_RE = /^(?:[A-ZÁÉÍÓÚÂÊÔÃÕÇÜ0-9\s\-–—/,()]+|.+:)$/;
 
@@ -10,10 +12,36 @@ export function cleanTopic(text) {
   return text
     .replace(/^[\s•\-–—*·>]+/, "")
     .replace(/^\(?\d+(?:\.\d+)*[.)\-–]?\s*/, "")
+    .replace(/^[\s\-–—]+/, "")
     .replace(/^[a-z]\)\s*/i, "")
     .replace(/[\s.;,:]+$/, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+const REFERENCES_RE = /^(refer[eê]ncias|bibliografia|bibliografia sugerida|refer[eê]ncias bibliogr[aá]ficas)\b.*:?$/i;
+const CONNECTOR_END_RE = /\b(de|da|do|das|dos|e|em|no|na|nos|nas|com|para|a|o|ao|aos|à|às|sobre|entre|por)$/i;
+
+// Reúne linhas de um mesmo tema quebradas pela diagramação do PDF.
+function joinBrokenLines(lines) {
+  const out = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    const prev = out[out.length - 1];
+    const continues =
+      prev &&
+      line &&
+      !/^[\d•\-–—*·]/.test(line) &&
+      !isHeading(line) &&
+      (CONNECTOR_END_RE.test(prev) || (/^[a-zà-ÿ]/.test(line) && !/[.;:]$/.test(prev)));
+    // Título de disciplina em CAIXA ALTA quebrado em duas linhas ("... CONDUÇÃO" / "DE ENSAIOS CLÍNICOS").
+    const headingContinues =
+      prev && line && isHeading(prev) && isHeading(line) && !prev.endsWith(":") &&
+      (CONNECTOR_END_RE.test(prev) || /^(DE|DA|DO|DAS|DOS|E|EM|COM|PARA|NO|NA)\s/.test(line));
+    if (continues || headingContinues) out[out.length - 1] = prev + " " + line;
+    else out.push(line);
+  }
+  return out;
 }
 
 function isHeading(line) {
@@ -29,14 +57,24 @@ export function parseSyllabus(raw) {
   let group = "Geral";
   const seen = new Set();
 
-  const lines = String(raw || "")
-    .replace(/\r/g, "")
+  const lines = joinBrokenLines(String(raw || "").replace(/\r/g, "").split("\n"))
+    .join("\n")
     // quebra numerações inline: "... 2. Tema ... 3. Tema" -> linhas separadas
     .replace(/\s(?=\d{1,2}(?:\.\d{1,2})*[.)]\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/g, "\n")
     .split("\n");
 
+  let skipping = false;
   for (const line of lines) {
     if (!line.trim()) continue;
+
+    if (REFERENCES_RE.test(line.trim())) {
+      skipping = true;
+      continue;
+    }
+    if (skipping) {
+      if (isHeading(line) && !/^[A-ZÁÉÍÓÚÂÊÔÃÕÇ ]+\.\s/.test(line.trim())) skipping = false;
+      else continue;
+    }
 
     // "DISCIPLINA: tema1; tema2" -> heading + temas
     const inline = line.match(/^([^:]{3,80}):\s*(.+)$/);

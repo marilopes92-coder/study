@@ -1,4 +1,5 @@
 import { parseSyllabus } from "./parser.js";
+import { EDITAL_PRESETS } from "./lessons-pesquisa.js";
 import { FEYNMAN_STEPS, QUESTION_BANK } from "./data.js";
 import {
   dateKey, ensureDailyTopic, advanceDailyTopic, markDone, registerStudy, currentStreak,
@@ -101,6 +102,15 @@ function renderOnboarding() {
       <button class="primary" data-action="import-syllabus">Gerar meu plano de estudos</button>
       <button data-action="load-example">Usar exemplo</button>
     </div>
+  </section>
+  ${renderPresets()}`;
+}
+
+function renderPresets() {
+  return `<section class="card">
+    <h3>📑 Editais prontos</h3>
+    <p class="muted small">Planos montados a partir de editais enviados, com aulas e questões prontas para cada tema.</p>
+    ${EDITAL_PRESETS.map((p) => `<button class="preset" data-action="use-preset" data-id="${p.id}">${esc(p.label)}</button>`).join("")}
   </section>`;
 }
 
@@ -399,6 +409,7 @@ function renderSettings() {
     <textarea id="in-syllabus" rows="8">${esc(state.syllabusRaw)}</textarea>
     <div class="row"><button class="primary" data-action="import-syllabus">Atualizar temas</button></div>
   </section>
+  ${renderPresets()}
 
   <section class="card">
     <h3>💾 Backup</h3>
@@ -477,6 +488,14 @@ function go(v) {
 
 const actions = {
   "load-example": () => ($("#in-syllabus").value = EXAMPLE),
+  "use-preset": (el) => {
+    const preset = EDITAL_PRESETS.find((p) => p.id === el.dataset.id);
+    if (!preset) return;
+    if (state.topics.length && !confirm("Substituir o conteúdo programático atual por este edital? O progresso de temas iguais é mantido.")) return;
+    $("#in-syllabus").value = preset.text;
+    if (view === "inicio" && !$("#in-exam").value) $("#in-exam").value = preset.label.split(" (")[0];
+    importSyllabus();
+  },
   "import-syllabus": importSyllabus,
   "toggle-task": (el) => {
     setTask(el.dataset.id, el.checked);
