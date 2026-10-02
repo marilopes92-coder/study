@@ -1,8 +1,8 @@
 // Service worker: funciona offline e exibe o lembrete diário.
-const CACHE = "plantao-v3";
+const CACHE = "plantao-v4";
 const ASSETS = [
   "./", "index.html", "styles.css", "manifest.webmanifest", "icon.svg",
-  "js/app.js", "js/parser.js", "js/planner.js", "js/data.js", "js/lessons.js", "js/lessons-pesquisa.js", "js/ai.js", "js/notify.js",
+  "js/app.js", "js/parser.js", "js/planner.js", "js/data.js", "js/lessons.js", "js/lessons-pesquisa.js", "js/discursivas-pesquisa.js", "js/ai.js", "js/notify.js",
 ];
 
 self.addEventListener("install", (e) => {

@@ -1,9 +1,11 @@
 import { parseSyllabus } from "./parser.js";
 import { EDITAL_PRESETS } from "./lessons-pesquisa.js";
+import { DISCURSIVE_BANK } from "./discursivas-pesquisa.js";
 import { FEYNMAN_STEPS, QUESTION_BANK } from "./data.js";
 import {
   dateKey, ensureDailyTopic, advanceDailyTopic, markDone, registerStudy, currentStreak,
   progress, reviewsDue, markReviewed, bankQuestionsFor, discursiveFor, coachMessage, dailyTasks, lessonFor,
+  discursiveBankFor, pickDiscursiveExam, discursiveScore,
 } from "./planner.js";
 import * as ai from "./ai.js";
 import * as notify from "./notify.js";
@@ -29,6 +31,7 @@ let view = location.hash.replace("#", "") || "hoje";
 let quizTopicId = null;
 let groupFilter = "";
 let busy = {};
+let discFilter = "";
 
 function load() {
   try {
@@ -316,6 +319,7 @@ function renderQuiz() {
   const quiz = state.quizzes[topic.id] || {};
   const questions = quiz.ai?.multiple?.length ? quiz.ai.multiple.map((q, i) => ({ ...q, id: "ai-" + i })) : bankQuestionsFor(topic);
   const discursive = quiz.ai?.discursive?.[0] || { q: discursiveFor(topic, today()), expected: [] };
+  const bankDisc = quiz.ai?.discursive?.length ? [] : discursiveBankFor(topic);
   const answers = quiz.answers || {};
   const acc = state.stats.answered ? Math.round((state.stats.correct / state.stats.answered) * 100) : 0;
 
@@ -335,6 +339,9 @@ function renderQuiz() {
     <section class="card"><p>Ainda não há questões de múltipla escolha offline para este tema.
     ${hasAI() ? "Toque em <b>Gerar questões inéditas com IA</b>." : `Faça o <b>simulado geral</b> abaixo ou configure a IA.`}</p></section>`}
 
+  ${bankDisc.length ? `<section class="card"><h3>✍️ Questões discursivas com gabarito</h3>
+      <p class="muted small">Escreva como na prova; depois abra o gabarito e marque no espelho o que você contemplou.</p></section>
+      ${bankDisc.map((d, i) => renderDiscBank(d, i)).join("")}` : `
   <section class="card">
     <h3>✍️ Questão discursiva</h3>
     <p>${esc(discursive.q)}</p>
@@ -348,7 +355,9 @@ function renderQuiz() {
         <li>Apresentei o conceito de forma correta e objetiva?</li><li>Citei a base legal/norma (lei, resolução COFEN, portaria, manual do MS)?</li>
         <li>Descrevi as atribuições/intervenções do enfermeiro?</li><li>Dei um exemplo prático?</li><li>Texto com introdução, desenvolvimento e conclusão?</li></ul></details>`}
     ${quiz.discFeedback ? renderFeedback(quiz.discFeedback) : ""}
-  </section>
+  </section>`}
+
+  ${renderDiscursiveExam()}
 
   <section class="card">
     <h3>🎯 Simulado geral</h3>
@@ -356,6 +365,57 @@ function renderQuiz() {
     <button data-action="general-quiz">Sortear questão</button>
     <div id="general-q"></div>
   </section>`;
+}
+
+const nl2br = (t) => esc(t).replace(/\n/g, "<br>");
+
+function renderDiscBank(d, i, label = `Discursiva ${i + 1}`) {
+  const st = state.discBank?.[d.id] || {};
+  const checks = st.checks || [];
+  const total = d.espelho.reduce((n, e) => n + e.pts, 0);
+  return `<section class="card disc" data-did="${d.id}">
+    <p class="eyebrow">${esc(label)} · ${esc(d.area)} · ${total} pontos</p>
+    ${d.context ? `<blockquote lang="en" class="context">${esc(d.context)}</blockquote>` : ""}
+    <p class="${d.english ? "en" : ""}" ${d.english ? 'lang="en"' : ""}><b>${esc(d.q)}</b></p>
+    <textarea data-dbank="${d.id}" rows="8" placeholder="Escreva sua resposta (em português)...">${esc(st.text)}</textarea>
+    <div class="row">
+      <button data-action="save-dbank" data-id="${d.id}">Salvar resposta</button>
+      ${hasAI() ? `<button data-action="ai-dbank" data-id="${d.id}" ${busy["d-" + d.id] ? "disabled" : ""}>${busy["d-" + d.id] ? "Corrigindo…" : "✨ Corrigir com IA"}</button>` : ""}
+    </div>
+    <details ${st.open ? "open" : ""} data-action="open-gabarito" data-id="${d.id}"><summary>📘 Ver gabarito e espelho de correção</summary>
+      <div class="gabarito"><h4>Resposta esperada</h4><p>${nl2br(d.gabarito)}</p></div>
+      <h4>Espelho — marque o que sua resposta contemplou</h4>
+      <ul class="espelho">${d.espelho.map((e, k) => `
+        <li><label><input type="checkbox" data-action="espelho" data-id="${d.id}" data-k="${k}" ${checks[k] ? "checked" : ""}>
+        <span>${esc(e.item)} <b>(${e.pts} pts)</b></span></label></li>`).join("")}</ul>
+      <p class="score">Autoavaliação: <b>${discursiveScore(d, checks)}/${total}</b></p>
+      <p class="muted small">Referência: ${esc(d.ref)}</p>
+    </details>
+    ${st.fb ? renderFeedback(st.fb) : ""}
+  </section>`;
+}
+
+function renderDiscursiveExam() {
+  const exam = state.discExam;
+  const items = (exam?.ids || []).map((id) => DISCURSIVE_BANK.find((d) => d.id === id)).filter(Boolean);
+  const all = exam?.mode === "all";
+  const list = all ? DISCURSIVE_BANK.filter((d) => !discFilter || d.area === discFilter) : items;
+  const total = items.reduce((n, d) => n + discursiveScore(d, state.discBank?.[d.id]?.checks), 0);
+  const areas = [...new Set(DISCURSIVE_BANK.map((d) => d.area))];
+  return `<section class="card">
+    <h3>🏆 Simulado discursivo — formato INCA Fellow (Pesquisa Clínica)</h3>
+    <p class="muted small">A prova tem 5 questões discursivas (100 pontos), com um texto e um enunciado em inglês e respostas em português.
+    O simulado sorteia uma questão de cada tema do edital e uma com texto em inglês. São ${DISCURSIVE_BANK.length} questões no banco, todas com gabarito.</p>
+    <div class="row">
+      <button class="primary" data-action="new-disc-exam">${items.length && !all ? "Sortear novo simulado" : "Montar simulado (5 questões)"}</button>
+      <button data-action="all-disc">Ver banco completo</button>
+      ${exam ? `<button data-action="close-disc">Fechar</button>` : ""}
+    </div>
+    ${items.length && !all ? `<p class="score">Pontuação (autoavaliação pelo espelho): <b>${total}/100</b></p>` : ""}
+    ${all ? `<label>Filtrar por tema<select data-action="disc-filter"><option value="">Todos (${DISCURSIVE_BANK.length})</option>
+      ${areas.map((a) => `<option ${a === discFilter ? "selected" : ""}>${esc(a)}</option>`).join("")}</select></label>` : ""}
+  </section>
+  ${list.map((d, i) => renderDiscBank(d, i, all ? `Questão ${i + 1}` : `Questão ${i + 1} de 5`)).join("")}`;
 }
 
 function renderMC(q, i, chosen) {
@@ -599,6 +659,62 @@ const actions = {
       quiz.discFeedback = await ai.reviewDiscursive({ ...aiOpts(), question, answer: quiz.discAnswer });
     });
   },
+  "save-dbank": (el) => {
+    const st = dbankState(el.dataset.id);
+    st.text = document.querySelector(`[data-dbank="${el.dataset.id}"]`).value;
+    if (st.text.trim() && state.daily?.topicId && discursiveBankFor(topicById(state.daily.topicId) || { title: "" }).some((d) => d.id === el.dataset.id)) setTask("discursive");
+    registerStudy(state, today());
+    save();
+    toast("Resposta salva.");
+  },
+  "open-gabarito": (el) => {
+    dbankState(el.dataset.id).open = el.open;
+    save();
+  },
+  espelho: (el) => {
+    const st = dbankState(el.dataset.id);
+    st.checks ||= [];
+    st.checks[Number(el.dataset.k)] = el.checked;
+    save();
+    const d = DISCURSIVE_BANK.find((x) => x.id === el.dataset.id);
+    const card = el.closest(".disc");
+    card.querySelector(".score b").textContent = `${discursiveScore(d, st.checks)}/${d.espelho.reduce((n, e) => n + e.pts, 0)}`;
+    const examScore = document.querySelector(".card > .score b");
+    if (examScore && state.discExam?.mode !== "all") {
+      const total = state.discExam.ids.reduce((n, id) => n + discursiveScore(DISCURSIVE_BANK.find((x) => x.id === id), state.discBank?.[id]?.checks), 0);
+      examScore.textContent = `${total}/100`;
+    }
+  },
+  "ai-dbank": (el) => {
+    const d = DISCURSIVE_BANK.find((x) => x.id === el.dataset.id);
+    const st = dbankState(d.id);
+    st.text = document.querySelector(`[data-dbank="${d.id}"]`).value;
+    if (!st.text.trim()) return toast("Escreva sua resposta primeiro.");
+    const total = d.espelho.reduce((n, e) => n + e.pts, 0);
+    const expected = d.gabarito + "\n\nEspelho:\n" + d.espelho.map((e) => `- ${e.item} (${e.pts} pts)`).join("\n");
+    runAI("d-" + d.id, async () => {
+      st.fb = await ai.reviewDiscursive({ ...aiOpts(), question: (d.context ? d.context + "\n\n" : "") + d.q, answer: st.text, expected, maxScore: total });
+    });
+  },
+  "new-disc-exam": () => {
+    state.discExam = { mode: "exam", ids: pickDiscursiveExam() };
+    save();
+    render();
+  },
+  "all-disc": () => {
+    state.discExam = { mode: "all", ids: [] };
+    save();
+    render();
+  },
+  "close-disc": () => {
+    state.discExam = null;
+    save();
+    render();
+  },
+  "disc-filter": (el) => {
+    discFilter = el.value;
+    render();
+  },
   "general-quiz": () => {
     const related = new Map();
     state.topics.forEach((t) => bankQuestionsFor(t, 50).forEach((q) => related.set(q.id, q)));
@@ -667,6 +783,11 @@ const actions = {
   },
 };
 
+function dbankState(id) {
+  state.discBank ||= {};
+  return (state.discBank[id] ||= {});
+}
+
 function download(blob, name) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -679,7 +800,7 @@ document.addEventListener("click", (e) => {
   const nav = e.target.closest("nav button");
   if (nav) return go(nav.dataset.view);
   const el = e.target.closest("[data-action]");
-  if (el && el.tagName !== "SELECT" && el.type !== "checkbox" && el.type !== "file") actions[el.dataset.action]?.(el);
+  if (el && el.tagName !== "SELECT" && el.tagName !== "DETAILS" && el.type !== "checkbox" && el.type !== "file") actions[el.dataset.action]?.(el);
 });
 
 document.addEventListener("change", (e) => {
@@ -707,11 +828,19 @@ document.addEventListener("change", (e) => {
 
 // Salva rascunhos das anotações enquanto digita.
 document.addEventListener("input", (e) => {
+  if (e.target.dataset.dbank) {
+    dbankState(e.target.dataset.dbank).text = e.target.value;
+    save();
+  }
   if (e.target.dataset.note && state.daily?.topicId) {
     (state.notes[state.daily.topicId] ||= {})[e.target.dataset.note] = e.target.value;
     save();
   }
 });
+
+document.addEventListener("toggle", (e) => {
+  if (e.target.dataset?.action === "open-gabarito") actions["open-gabarito"](e.target);
+}, true);
 
 window.addEventListener("hashchange", () => {
   const v = location.hash.replace("#", "");

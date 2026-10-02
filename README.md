@@ -27,6 +27,11 @@ fluxo ético-regulatório, tipos de estudos clínicos e TCLE), baseadas na Lei 1
 Declaração da UNESCO (2005), Umscheid et al. (2011) e Verweij et al. (2019). O edital está disponível como **edital pronto**
 na tela inicial e em Ajustes.
 
+**Banco discursivo (`js/discursivas-pesquisa.js`)**: 30 questões discursivas com resposta-modelo (gabarito) e espelho de
+correção (20 pontos cada), incluindo 3 com texto e enunciado em inglês, como na prova do INCA. Na aba Questões há o
+**simulado discursivo** (5 questões = 100 pontos: uma por tema do edital + uma em inglês), o banco completo com filtro
+por tema e autoavaliação marcando os itens do espelho.
+
 ### IA opcional (Claude)
 
 Em **Ajustes**, você pode colar uma chave da API do Claude ([console.anthropic.com](https://console.anthropic.com)). Com ela, o app:
@@ -68,6 +73,7 @@ js/parser.js          transforma o edital em disciplinas/temas
 js/planner.js         tema do dia, sequência, revisões, tarefas, coach
 js/lessons.js         biblioteca de aulas offline no formato Feynman
 js/lessons-pesquisa.js aulas, questões e edital pronto de Pesquisa Clínica (INCA 214)
+js/discursivas-pesquisa.js banco de questões discursivas com gabarito e espelho (INCA 214)
 js/data.js            banco de questões, frases do coach, etapas Feynman
 js/ai.js              integração opcional com a API do Claude
 js/notify.js          notificações e arquivo .ics

@@ -1,6 +1,7 @@
 // Regras de negócio puras (sem DOM) — testáveis com `node --test`.
 import { QUESTION_BANK, COACH, DISCURSIVE_TEMPLATES } from "./data.js";
 import { LESSONS } from "./lessons.js";
+import { DISCURSIVE_BANK } from "./discursivas-pesquisa.js";
 
 export const REVIEW_INTERVALS = [1, 7, 30]; // revisão espaçada (dias após concluir)
 
@@ -127,6 +128,31 @@ export function lessonFor(topic) {
     }
   }
   return bestScore >= 4 ? best : null;
+}
+
+// Questões discursivas do banco (com gabarito) mais aderentes ao tema.
+export function discursiveBankFor(topic, limit = 4) {
+  const title = normalize(topic.title);
+  const scored = DISCURSIVE_BANK.map((d) => ({
+    d,
+    score: d.tags.reduce((n, tag) => n + (title.includes(tag) ? tag.length * (/\d/.test(tag) ? 3 : 1) : 0), 0),
+  })).filter((x) => x.score > 0);
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored[0]?.score || 0;
+  return scored.filter((x) => x.score >= top * 0.5).slice(0, limit).map((x) => x.d);
+}
+
+// Simulado no formato da prova INCA: 5 questões (uma de cada área + uma com texto em inglês).
+export function pickDiscursiveExam(rand = Math.random) {
+  const areas = [...new Set(DISCURSIVE_BANK.filter((d) => !d.english).map((d) => d.area))];
+  const pick = (list) => list[Math.floor(rand() * list.length)];
+  const ids = areas.map((a) => pick(DISCURSIVE_BANK.filter((d) => d.area === a && !d.english)).id);
+  ids.push(pick(DISCURSIVE_BANK.filter((d) => d.english)).id);
+  return ids;
+}
+
+export function discursiveScore(item, checks = []) {
+  return item.espelho.reduce((n, e, i) => n + (checks[i] ? e.pts : 0), 0);
 }
 
 export function discursiveFor(topic, today) {

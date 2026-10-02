@@ -4,7 +4,9 @@ import { parseSyllabus } from "../js/parser.js";
 import {
   ensureDailyTopic, advanceDailyTopic, markDone, currentStreak, progress,
   reviewsDue, markReviewed, bankQuestionsFor, coachMessage, daysBetween, lessonFor,
+  discursiveBankFor, pickDiscursiveExam, discursiveScore,
 } from "../js/planner.js";
+import { DISCURSIVE_BANK } from "../js/discursivas-pesquisa.js";
 import { LESSONS } from "../js/lessons.js";
 
 const SYLLABUS = `LEGISLAÇÃO DO SUS
@@ -155,4 +157,31 @@ test("questões de pesquisa não misturam o Código de Ética da Enfermagem", ()
     assert.ok(qs.every((q) => !q.q.includes("COFEN")), title);
   }
   for (const q of PESQUISA_QUESTIONS) assert.ok(q.answer >= 0 && q.answer < q.options.length && q.explain);
+});
+
+test("banco discursivo: cada questão tem gabarito e espelho somando 20 pontos", () => {
+  assert.ok(DISCURSIVE_BANK.length >= 25);
+  assert.equal(new Set(DISCURSIVE_BANK.map((d) => d.id)).size, DISCURSIVE_BANK.length);
+  for (const d of DISCURSIVE_BANK) {
+    assert.ok(d.q && d.gabarito.length > 200 && d.ref, d.id);
+    assert.equal(d.espelho.reduce((n, e) => n + e.pts, 0), 20, d.id);
+    if (d.english) assert.ok(d.context, d.id);
+  }
+  assert.equal(discursiveScore(DISCURSIVE_BANK[0], [true, false, true]), DISCURSIVE_BANK[0].espelho[0].pts + DISCURSIVE_BANK[0].espelho[2].pts);
+});
+
+test("todo tema do edital INCA (original e detalhado) tem discursivas com gabarito", () => {
+  const topics = [...parseSyllabus(INCA_PDF), ...parseSyllabus(EDITAL_PRESETS[0].text)];
+  for (const t of topics) assert.ok(discursiveBankFor(t).length > 0, t.title);
+  assert.equal(discursiveBankFor({ title: "Hipertensão arterial", group: "X" }).length, 0);
+});
+
+test("simulado discursivo: 5 questões, uma por tema + uma em inglês", () => {
+  for (let i = 0; i < 20; i++) {
+    const ids = pickDiscursiveExam();
+    const items = ids.map((id) => DISCURSIVE_BANK.find((d) => d.id === id));
+    assert.equal(new Set(ids).size, 5);
+    assert.equal(new Set(items.map((d) => d.area)).size, 5);
+    assert.equal(items.filter((d) => d.english).length, 1);
+  }
 });

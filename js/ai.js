@@ -167,15 +167,17 @@ export function reviewExplanation({ apiKey, model, topic, explanation }) {
   });
 }
 
-export function reviewDiscursive({ apiKey, model, question, answer }) {
+export function reviewDiscursive({ apiKey, model, question, answer, expected, maxScore = 10 }) {
   return askJSON({
     apiKey,
     model,
     schema: FEEDBACK_SCHEMA,
     prompt:
-      `Corrija esta resposta discursiva de concurso para enfermeiro como uma banca faria.\n\n` +
-      `Questão: ${question}\n\nResposta do candidato:\n"""${answer}"""\n\n` +
-      `"score": 0 a 10. "strengths": pontos corretos. "gaps": o que faltou ou está errado. ` +
-      `"simpler": um modelo de resposta ideal, objetivo.`,
+      `Corrija esta resposta discursiva de concurso/processo seletivo como uma banca faria.\n\n` +
+      `Questão: ${question}\n\n` +
+      (expected ? `Gabarito e espelho de correção da banca:\n"""${expected}"""\n\n` : "") +
+      `Resposta do candidato:\n"""${answer}"""\n\n` +
+      `"score": 0 a ${maxScore}${expected ? ", seguindo os pontos do espelho" : ""}. "strengths": pontos corretos. ` +
+      `"gaps": o que faltou ou está errado. "simpler": um modelo de resposta ideal, objetivo.`,
   });
 }

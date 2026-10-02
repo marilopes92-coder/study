@@ -144,3 +144,9 @@ details.check { border: 1px solid var(--line); border-radius: 10px; padding: 8px
 details.check summary { font-weight: 600; }
 details.check p { margin: 8px 0 0; color: var(--ok); font-weight: 600; }
 button.preset { width: 100%; text-align: left; margin-top: 6px; }
+blockquote.context { margin: 8px 0; padding: 10px 12px; border-left: 4px solid var(--brand); background: var(--bg); border-radius: 0 10px 10px 0; font-style: italic; }
+.gabarito { background: var(--ok-soft); border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+ul.espelho { list-style: none; padding: 0; margin: 6px 0; }
+ul.espelho li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+ul.espelho label { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin: 0; }
+.score { font-size: 1.05rem; margin-top: 8px; }
